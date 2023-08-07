@@ -647,10 +647,10 @@ def run_lb_logs():
 
 def lambda_handler(event, context, bucket_name='default'):
     """Function that runs all of the previously defined functions"""
-    if bucket_name == 'default':
-        unique_end = random_string_generator()
-        bucket_name = create_bucket(unique_end)
+    unique_end = random_string_generator()
     account_number = sts.get_caller_identity()["Account"]
+    if bucket_name == 'default':
+        bucket_name = create_bucket(unique_end)
     flow_log_activator(region_list, account_number, bucket_name)
     check_cloudtrail(account_number, bucket_name)
     eks_logging(region_list)
