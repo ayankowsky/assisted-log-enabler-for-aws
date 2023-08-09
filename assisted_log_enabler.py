@@ -75,7 +75,7 @@ def assisted_log_enabler():
 
     parser = argparse.ArgumentParser(description='Assisted Log Enabler - Find resources that are not logging, and turn them on.')
     parser.add_argument('--mode',help=' Choose the mode that you want to run Assisted Log Enabler in. Available modes: single_account, multi_account, cleanup, dryrun. WARNING: For multi_account, You must have the associated CloudFormation template deployed as a StackSet. See the README file for more details.')
-    parser.add_argument('--bucket',help=' Specify an S3 bucket name that you want Assisted Log Enabler to store logs in. Otherwise, a new S3 bucket will be created. (default)')
+    parser.add_argument('--bucket',help=' Specify an S3 bucket name that you want Assisted Log Enabler to store logs in. Otherwise, a new S3 bucket will be created (default). Only used for Amazon VPC Flow Logs, Amazon Route 53 Resolver Query Logs, and AWS CloudTrail logs.')
 
     function_parser_group = parser.add_argument_group('Single & Multi Account Options', 'Use these flags to choose which services you want to turn logging on for.')
     function_parser_group.add_argument('--all', action='store_true', help=' Turns on all of the log types within the Assisted Log Enabler for AWS.')

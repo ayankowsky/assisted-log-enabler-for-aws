@@ -159,7 +159,7 @@ def flow_log_activator(region_list, account_number, bucket_name):
 
 
 # 3. Check to see if a CloudTrail trail is configured, and turn it on if it is not.
-def check_cloudtrail(account_number, bucket_name):
+def check_cloudtrail(account_number, bucket_name, custom_bucket):
     """Function to check if CloudTrail is enabled"""
     logging.info("Checking to see if CloudTrail is on, and will activate if needed.")
     try:
@@ -168,6 +168,44 @@ def check_cloudtrail(account_number, bucket_name):
             includeShadowTrails=True
         )
         if cloudtrail_status["trailList"][0]["Name"] == "":
+            if custom_bucket:
+                logging.info("Pre-existing S3 bucket specified: checking if the bucket policy allows CloudTrail to access the bucket.")
+
+                statement1 = {"Sid": "AWSCloudTrailAclCheck20150319","Effect": "Allow","Principal": {"Service": "cloudtrail.amazonaws.com"},"Action": "s3:GetBucketAcl","Resource": "arn:aws:s3:::" + bucket_name }
+                statement2 = {"Sid": "AWSCloudTrailWrite20150319","Effect": "Allow","Principal": {"Service": "cloudtrail.amazonaws.com"},"Action": "s3:PutObject","Resource": "arn:aws:s3:::" + bucket_name + "/cloudtrail/AWSLogs/" + account_number + "/*","Condition": {"StringEquals": {"s3:x-amz-acl": "bucket-owner-full-control"}}}
+                
+                logging.info("GetBucketPolicy API Call")
+                original_policy = s3.get_bucket_policy(Bucket=bucket_name)["Policy"]
+
+                policy = json.loads(original_policy)
+
+                if statement1["Sid"] in original_policy and statement2["Sid"] in original_policy:
+                    logging.info("Required statements already exist in the bucket policy for " + bucket_name)
+                else:
+                    if statement1["Sid"] not in original_policy:
+                        logging.info("Adding statement " + statement1["Sid"] + " to " + bucket_name + " bucket policy.")
+                        policy["Statement"].append(statement1)
+
+                        new_policy = json.dumps(policy)
+
+                        logging.info("PutBucketPolicy API Call")
+                        s3.put_bucket_policy(
+                            Bucket=bucket_name,
+                            Policy=new_policy
+                        )
+
+                    if statement2["Sid"] not in original_policy:
+                        logging.info("Adding statement " + statement2["Sid"] + " to " + bucket_name + " bucket policy.")
+                        policy["Statement"].append(statement2)
+
+                        new_policy = json.dumps(policy)
+
+                        logging.info("PutBucketPolicy API Call")
+                        s3.put_bucket_policy(
+                            Bucket=bucket_name,
+                            Policy=new_policy
+                        )
+
             logging.info("CreateTrail API Call")
             cloudtrail_activate = cloudtrail.create_trail(
                 Name='assisted-log-enabler-ct-' + account_number,
@@ -606,11 +644,13 @@ def run_eks():
 
 def run_cloudtrail(bucket_name='default'):
     """Function that runs the defined CloudTrail logging code"""
+    custom_bucket = True
     if bucket_name == 'default':
         unique_end = random_string_generator()
         bucket_name = create_bucket(unique_end)
+        custom_bucket = False
     account_number = sts.get_caller_identity()["Account"]
-    check_cloudtrail(account_number, bucket_name)
+    check_cloudtrail(account_number, bucket_name, custom_bucket)
     logging.info("This is the end of the script. Please feel free to validate that logs have been turned on.")
 
 
@@ -649,10 +689,12 @@ def lambda_handler(event, context, bucket_name='default'):
     """Function that runs all of the previously defined functions"""
     unique_end = random_string_generator()
     account_number = sts.get_caller_identity()["Account"]
+    custom_bucket = True
     if bucket_name == 'default':
         bucket_name = create_bucket(unique_end)
+        custom_bucket = False
     flow_log_activator(region_list, account_number, bucket_name)
-    check_cloudtrail(account_number, bucket_name)
+    check_cloudtrail(account_number, bucket_name, custom_bucket)
     eks_logging(region_list)
     route_53_query_logs(region_list, account_number, bucket_name)
     s3_logs(region_list, unique_end)
