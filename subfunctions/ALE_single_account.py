@@ -24,17 +24,14 @@ timestamp_date_string = str(timestamp_date)
 sts = boto3.client("sts")
 s3 = boto3.client("s3")
 cloudtrail = boto3.client("cloudtrail")
-region = os.environ["AWS_REGION"]
 
 # Get partition
-def get_partition():
+def get_partition(region):
     session = boto3.session.Session()
     return session.get_partition_for_region(region)
 
 # Get region list based on partition
 def get_region_list(partition):
-    session = boto3.session.Session()
-    partition = session.get_partition_for_region(region)
     region_list = []
 
     # Commercial regions
@@ -144,26 +141,26 @@ def get_bucket_policy(bucket_name, account_number, partition):
 
 
 # 1. Create a Bucket and Lifecycle Policy
-def create_bucket(unique_end):
+def create_bucket(unique_end, partition):
     """Function to create the bucket for storing logs"""
     try:
         account_number = sts.get_caller_identity()["Account"]
         logging.info(f"Creating bucket in {account_number}")
         logging.info("CreateBucket API Call")
         bucket_name = (
-            "aws-log-collection-" + account_number + "-" + region + "-" + unique_end
+            "aws-log-collection-" + account_number + "-" + REGION + "-" + unique_end
         )
-        if region == "us-east-1":
-            logging_bucket_dict = s3.create_bucket(Bucket=bucket_name)
+        if REGION == "us-east-1":
+            s3.create_bucket(Bucket=bucket_name)
         else:
-            logging_bucket_dict = s3.create_bucket(
+            s3.create_bucket(
                 Bucket=bucket_name,
-                CreateBucketConfiguration={"LocationConstraint": region},
+                CreateBucketConfiguration={"LocationConstraint": REGION},
             )
         logging.info("Bucket Created.")
         logging.info("Setting lifecycle policy.")
         logging.info("PutBucketLifecycleConfiguration API Call")
-        lifecycle_policy = s3.put_bucket_lifecycle_configuration(
+        s3.put_bucket_lifecycle_configuration(
             Bucket=bucket_name,
             LifecycleConfiguration={
                 "Rules": [
@@ -181,7 +178,7 @@ def create_bucket(unique_end):
         )
         logging.info("Lifecycle Policy successfully set.")
         logging.info("PutObject API Call")
-        create_ct_path = s3.put_object(
+        s3.put_object(
             Bucket=bucket_name, Key="cloudtrail/AWSLogs/" + account_number + "/"
         )
         logging.info("PutBucketPolicy API Call")
@@ -190,7 +187,7 @@ def create_bucket(unique_end):
         )
         logging.info("Setting the S3 bucket Public Access to Blocked")
         logging.info("PutPublicAccessBlock API Call")
-        bucket_private = s3.put_public_access_block(
+        s3.put_public_access_block(
             Bucket=bucket_name,
             PublicAccessBlockConfiguration={
                 "BlockPublicAcls": True,
@@ -522,7 +519,7 @@ def s3_logs(region_list, unique_end):
                     logging.info(f"Creating bucket in {account_number}")
                     logging.info("CreateBucket API Call")
                     if aws_region == "us-east-1":
-                        logging_bucket_dict = s3.create_bucket(
+                        s3.create_bucket(
                             Bucket="aws-s3-log-collection-"
                             + account_number
                             + "-"
@@ -531,7 +528,7 @@ def s3_logs(region_list, unique_end):
                             + unique_end
                         )
                     else:
-                        logging_bucket_dict = s3.create_bucket(
+                        s3.create_bucket(
                             Bucket="aws-s3-log-collection-"
                             + account_number
                             + "-"
@@ -554,7 +551,7 @@ def s3_logs(region_list, unique_end):
                     )
                     logging.info("Setting lifecycle policy.")
                     logging.info("PutBucketLifecycleConfiguration API Call")
-                    lifecycle_policy = s3.put_bucket_lifecycle_configuration(
+                    s3.put_bucket_lifecycle_configuration(
                         Bucket="aws-s3-log-collection-"
                         + account_number
                         + "-"
@@ -581,7 +578,7 @@ def s3_logs(region_list, unique_end):
                     logging.info("Lifecycle Policy successfully set.")
                     logging.info("Setting the S3 bucket Public Access to Blocked")
                     logging.info("PutPublicAccessBlock API Call")
-                    bucket_private = s3.put_public_access_block(
+                    s3.put_public_access_block(
                         Bucket="aws-s3-log-collection-"
                         + account_number
                         + "-"
@@ -1192,7 +1189,8 @@ def wafv2_logs(region_list, partition):
 
 # Runs the defined EKS logging code
 def run_eks():
-    partition = get_partition
+    region = os.environ["AWS_REGION"]
+    partition = get_partition(region)
     region_list = get_region_list(partition)
     eks_logging(region_list)
     logging.info(
@@ -1202,12 +1200,14 @@ def run_eks():
 
 # Runs the defined CloudTrail creation code
 def run_cloudtrail(bucket_name="default"):
+    region = os.environ["AWS_REGION"]
+    partition = get_partition(region)
     account_number = sts.get_caller_identity()["Account"]
     if bucket_name == "default":
         unique_end = random_string_generator()
-        bucket_name = create_bucket(unique_end)
+        bucket_name = create_bucket(unique_end, partition)
     else:
-        update_custom_bucket_policy(bucket_name, account_number)
+        update_custom_bucket_policy(bucket_name, account_number, partition)
     check_cloudtrail(account_number, bucket_name)
     logging.info(
         "This is the end of the script. Please feel free to validate that logs have been turned on."
@@ -1216,12 +1216,13 @@ def run_cloudtrail(bucket_name="default"):
 
 # Runs the defined VPC flow logging code
 def run_vpc_flow_logs(bucket_name="default"):
-    partition = get_partition
+    region = os.environ["AWS_REGION"]
+    partition = get_partition(region)
     region_list = get_region_list(partition)
     account_number = sts.get_caller_identity()["Account"]
     if bucket_name == "default":
         unique_end = random_string_generator()
-        bucket_name = create_bucket(unique_end)
+        bucket_name = create_bucket(unique_end, partition)
     flow_log_activator(region_list, account_number, bucket_name, partition)
     logging.info(
         "This is the end of the script. Please feel free to validate that logs have been turned on."
@@ -1230,12 +1231,13 @@ def run_vpc_flow_logs(bucket_name="default"):
 
 # Runs the defined Route53 query logging code
 def run_r53_query_logs(bucket_name="default"):
-    partition = get_partition
+    region = os.environ["AWS_REGION"]
+    partition = get_partition(region)
     region_list = get_region_list(partition)
     account_number = sts.get_caller_identity()["Account"]
     if bucket_name == "default":
         unique_end = random_string_generator()
-        bucket_name = create_bucket(unique_end)
+        bucket_name = create_bucket(unique_end, partition)
     route_53_query_logs(region_list, account_number, bucket_name, partition)
     logging.info(
         "This is the end of the script. Please feel free to validate that logs have been turned on."
@@ -1244,7 +1246,8 @@ def run_r53_query_logs(bucket_name="default"):
 
 # Runs the defined S3 access logging code
 def run_s3_logs():
-    partition = get_partition
+    region = os.environ["AWS_REGION"]
+    partition = get_partition(region)
     region_list = get_region_list(partition)
     unique_end = random_string_generator()
     s3_logs(region_list, unique_end)
@@ -1255,7 +1258,8 @@ def run_s3_logs():
 
 # Runs the defined Load Balancer logging code
 def run_lb_logs():
-    partition = get_partition
+    region = os.environ["AWS_REGION"]
+    partition = get_partition(region)
     region_list = get_region_list(partition)
     unique_end = random_string_generator()
     lb_logs(region_list, unique_end, partition)
@@ -1266,14 +1270,15 @@ def run_lb_logs():
 
 # Runs the defined GuardDuty enablement code and exports findings to an S3 bucket
 def run_guardduty(bucket_name="default"):
-    partition = get_partition
+    region = os.environ["AWS_REGION"]
+    partition = get_partition(region)
     region_list = get_region_list(partition)
     account_number = sts.get_caller_identity()["Account"]
     if bucket_name == "default":
         unique_end = random_string_generator()
-        bucket_name = create_bucket(unique_end)
+        bucket_name = create_bucket(unique_end, partition)
     else:
-        update_custom_bucket_policy(bucket_name, account_number)
+        update_custom_bucket_policy(bucket_name, account_number, partition)
     check_guardduty(region_list, account_number, bucket_name, partition)
     logging.info(
         "This is the end of the script. Please feel free to validate that logs have been turned on."
@@ -1282,7 +1287,8 @@ def run_guardduty(bucket_name="default"):
 
 # Runs the defined WAFv2 logging code
 def run_wafv2_logs():
-    partition = get_partition
+    region = os.environ["AWS_REGION"]
+    partition = get_partition(region)
     region_list = get_region_list(partition)
     wafv2_logs(region_list, partition)
     logging.info(
@@ -1292,7 +1298,8 @@ def run_wafv2_logs():
 
 # Runs all of the log enablement functions
 def lambda_handler(event, context, bucket_name="default"):
-    partition = get_partition
+    region = os.environ["AWS_REGION"]
+    partition = get_partition(region)
     region_list = get_region_list(partition)
     unique_end = random_string_generator()
     account_number = sts.get_caller_identity()["Account"]

@@ -21,11 +21,10 @@ timestamp_date_string = str(timestamp_date)
 sts = boto3.client("sts")
 cloudtrail = boto3.client("cloudtrail")
 organizations = boto3.client("organizations")
-region = os.environ["AWS_REGION"]
 
 
 # Get partition
-def get_partition():
+def get_partition(region):
     session = boto3.session.Session()
     return session.get_partition_for_region(region)
 
@@ -716,7 +715,8 @@ def dryrun_wafv2_logs(region_list, OrgAccountIdList, partition):
 
 
 def lambda_handler(event, context):
-    partition = get_partition()
+    region = os.environ["AWS_REGION"]
+    partition = get_partition(region)
     region_list = get_region_list(partition)
     OrgAccountIdList = org_account_grab()[0]
     dryrun_flow_log_activator(region_list, OrgAccountIdList, partition)

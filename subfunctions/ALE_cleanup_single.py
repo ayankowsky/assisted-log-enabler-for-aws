@@ -20,11 +20,10 @@ timestamp_date_string = str(timestamp_date)
 
 
 cloudtrail = boto3.client("cloudtrail")
-region = os.environ["AWS_REGION"]
 
 
 # Get partition
-def get_partition():
+def get_partition(region):
     session = boto3.session.Session()
     return session.get_partition_for_region(region)
 
@@ -532,7 +531,8 @@ def waf_cleanup(region_list):
 
 def run_vpcflow_cleanup():
     """Function to run the vpcflow_cleanup function"""
-    partition = get_partition()
+    region = os.environ["AWS_REGION"]
+    partition = get_partition(region)
     region_list = get_region_list(partition)
     vpcflow_cleanup(region_list)
     logging.info(
@@ -550,7 +550,8 @@ def run_cloudtrail_cleanup():
 
 def run_r53_cleanup():
     """Function to run the r53_cleanup function"""
-    partition = get_partition()
+    region = os.environ["AWS_REGION"]
+    partition = get_partition(region)
     region_list = get_region_list(partition)
     r53_cleanup(region_list)
     logging.info(
@@ -560,7 +561,8 @@ def run_r53_cleanup():
 
 def run_s3_cleanup():
     """Function to run the s3_cleanup function"""
-    partition = get_partition()
+    region = os.environ["AWS_REGION"]
+    partition = get_partition(region)
     region_list = get_region_list(partition)
     s3_cleanup(region_list)
     logging.info(
@@ -570,7 +572,8 @@ def run_s3_cleanup():
 
 def run_lb_cleanup():
     """Function to run the lb_cleanup function"""
-    partition = get_partition()
+    region = os.environ["AWS_REGION"]
+    partition = get_partition(region)
     region_list = get_region_list(partition)
     lb_cleanup(region_list)
     logging.info(
@@ -580,7 +583,8 @@ def run_lb_cleanup():
 
 def run_guardduty_cleanup():
     """Function to run the guardduty_cleanup function"""
-    partition = get_partition()
+    region = os.environ["AWS_REGION"]
+    partition = get_partition(region)
     region_list = get_region_list(partition)
     guardduty_cleanup(region_list)
     logging.info(
@@ -590,7 +594,8 @@ def run_guardduty_cleanup():
 
 def run_wafv2_cleanup():
     """Function to run the wafv2_cleanup function"""
-    partition = get_partition()
+    region = os.environ["AWS_REGION"]
+    partition = get_partition(region)
     region_list = get_region_list(partition)
     waf_cleanup(region_list)
     logging.info(
@@ -600,7 +605,8 @@ def run_wafv2_cleanup():
 
 def lambda_handler(event, context):
     """Function that runs all of the previously defined functions"""
-    partition = get_partition()
+    region = os.environ["AWS_REGION"]
+    partition = get_partition(region)
     region_list = get_region_list(partition)
     cloudtrail_cleanup()
     r53_cleanup(region_list)

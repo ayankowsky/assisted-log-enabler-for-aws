@@ -26,11 +26,10 @@ sts = boto3.client("sts")
 s3 = boto3.client("s3")
 cloudtrail = boto3.client("cloudtrail")
 organizations = boto3.client("organizations")
-region = os.environ["AWS_REGION"]
 
 
 # Get partition
-def get_partition():
+def get_partition(region):
     session = boto3.session.Session()
     return session.get_partition_for_region(region)
 
@@ -1634,7 +1633,8 @@ def wafv2_logs(
 
 # Runs the defined EKS logging code
 def run_eks(included_accounts="all", excluded_accounts="none"):
-    partition = get_partition()
+    region = os.environ["AWS_REGION"]
+    partition = get_partition(region)
     region_list = get_region_list(partition)
     OrgAccountIdList = org_account_grab()[0]
     eks_logging(
@@ -1649,7 +1649,8 @@ def run_eks(included_accounts="all", excluded_accounts="none"):
 def run_vpc_flow_logs(
     bucket_name="default", included_accounts="all", excluded_accounts="none"
 ):
-    partition = get_partition()
+    region = os.environ["AWS_REGION"]
+    partition = get_partition(region)
     region_list = get_region_list(partition)
     OrgAccountIdList = org_account_grab()[0]
     account_number = get_account_number()
@@ -1680,7 +1681,8 @@ def run_vpc_flow_logs(
 def run_r53_query_logs(
     bucket_name="default", included_accounts="all", excluded_accounts="none"
 ):
-    partition = get_partition()
+    region = os.environ["AWS_REGION"]
+    partition = get_partition(region)
     region_list = get_region_list(partition)
     OrgAccountIdList = org_account_grab()[0]
     account_number = get_account_number()
@@ -1709,7 +1711,8 @@ def run_r53_query_logs(
 
 # Runs the defined S3 access logging code
 def run_s3_logs(included_accounts="all", excluded_accounts="none"):
-    partition = get_partition()
+    region = os.environ["AWS_REGION"]
+    partition = get_partition(region)
     region_list = get_region_list(partition)
     unique_end = random_string_generator()
     OrgAccountIdList = org_account_grab()[0]
@@ -1728,7 +1731,8 @@ def run_s3_logs(included_accounts="all", excluded_accounts="none"):
 
 # Runs the defined Load Balancer logging code
 def run_lb_logs(included_accounts="all", excluded_accounts="none"):
-    partition = get_partition()
+    region = os.environ["AWS_REGION"]
+    partition = get_partition(region)
     region_list = get_region_list(partition)
     unique_end = random_string_generator()
     OrgAccountIdList = org_account_grab()[0]
@@ -1749,7 +1753,8 @@ def run_lb_logs(included_accounts="all", excluded_accounts="none"):
 def run_guardduty(
     bucket_name="default", included_accounts="all", excluded_accounts="none"
 ):
-    partition = get_partition()
+    region = os.environ["AWS_REGION"]
+    partition = get_partition(region)
     region_list = get_region_list(partition)
     OrgAccountIdList = org_account_grab()[0]
     account_number = get_account_number()
@@ -1779,7 +1784,8 @@ def run_guardduty(
 
 # Runs the defined WAFv2 logging code
 def run_wafv2_logs(included_accounts="all", excluded_accounts="none"):
-    partition = get_partition()
+    region = os.environ["AWS_REGION"]
+    partition = get_partition(region)
     region_list = get_region_list(partition)
     OrgAccountIdList, organization_id = org_account_grab()
     wafv2_logs(
@@ -1803,7 +1809,8 @@ def lambda_handler(
     included_accounts="all",
     excluded_accounts="none",
 ):
-    partition = get_partition()
+    region = os.environ["AWS_REGION"]
+    partition = get_partition(region)
     region_list = get_region_list(partition)
     unique_end = random_string_generator()
     account_number = get_account_number()
